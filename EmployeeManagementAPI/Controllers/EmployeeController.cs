@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using EmployeeManagementAPI.Models;
+using EmployeeManagementAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmployeeManagementAPI.Controllers
@@ -8,13 +9,49 @@ namespace EmployeeManagementAPI.Controllers
     [Route("api/[controller]")]
     public class EmployeeController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IEmployeeService _service;
         private readonly ILogger<EmployeeController> _logger;
 
-        public EmployeeController(ApplicationDbContext context, ILogger<EmployeeController> logger)
+        public EmployeeController(IEmployeeService service, ILogger<EmployeeController> logger)
         {
-            _context = context;
+            _service = service;
             _logger = logger;
+        }
+
+        // PATCH: api/employee/5
+        [HttpPatch("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> PatchEmployee(int id, [FromBody] EmployeeManagementAPI.Models.UpdateEmployeeDto dto)
+        {
+            if (dto == null)
+            {
+                return BadRequest();
+            }
+
+            var (success, errors) = await _service.PatchAsync(id, dto);
+            if (!success)
+            {
+                if (errors != null && errors.Contains("NotFound"))
+                {
+                    return NotFound(new { message = $"Employee with id {id} not found" });
+                }
+
+                if (errors != null && errors.Contains("ConcurrencyError"))
+                {
+                    return StatusCode(500, "Concurrency error occurred");
+                }
+
+                if (errors != null && errors.Contains("Employee with this email already exists"))
+                {
+                    return Conflict(new { message = "Employee with this email already exists" });
+                }
+
+                return BadRequest(new { errors });
+            }
+
+            return NoContent();
         }
 
         // GET: api/employee
@@ -24,7 +61,7 @@ namespace EmployeeManagementAPI.Controllers
         {
             try
             {
-                var employees = await _context.Employees.ToListAsync();
+                var employees = await _service.GetAllAsync();
                 return Ok(employees);
             }
             catch (Exception ex)
@@ -42,7 +79,7 @@ namespace EmployeeManagementAPI.Controllers
         {
             try
             {
-                var employee = await _context.Employees.FindAsync(id);
+                var employee = await _service.GetByIdAsync(id);
 
                 if (employee == null)
                 {
@@ -67,23 +104,16 @@ namespace EmployeeManagementAPI.Controllers
             try
             {
                 if (!ModelState.IsValid)
-                {
                     return BadRequest(ModelState);
+
+                // pre-check by email
+                var (success, message, employee) = await _service.CreateAsync(createEmployeeDto);
+                if (!success)
+                {
+                    return Conflict(new { message });
                 }
 
-                var employee = new Employee
-                {
-                    Name = createEmployeeDto.Name,
-                    Department = createEmployeeDto.Department,
-                    Salary = createEmployeeDto.Salary,
-                    Email = createEmployeeDto.Email,
-                    CreatedDate = DateTime.Now
-                };
-
-                _context.Employees.Add(employee);
-                await _context.SaveChangesAsync();
-
-                return CreatedAtAction("GetEmployee", new { id = employee.EmployeeId }, employee);
+                return CreatedAtAction("GetEmployee", new { id = employee!.EmployeeId }, employee);
             }
             catch (Exception ex)
             {
@@ -101,22 +131,16 @@ namespace EmployeeManagementAPI.Controllers
         {
             try
             {
-                var employee = await _context.Employees.FindAsync(id);
-
-                if (employee == null)
-                {
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+            var (success, error) = await _service.UpdateAsync(id, updateEmployeeDto);
+            if (!success)
+            {
+                if (error == null)
                     return NotFound(new { message = $"Employee with id {id} not found" });
-                }
-
-                employee.Name = updateEmployeeDto.Name;
-                employee.Department = updateEmployeeDto.Department;
-                employee.Salary = updateEmployeeDto.Salary;
-                employee.Email = updateEmployeeDto.Email;
-
-                _context.Entry(employee).State = EntityState.Modified;
-                await _context.SaveChangesAsync();
-
-                return NoContent();
+                return Conflict(new { message = error });
+            }
+            return NoContent();
             }
             catch (DbUpdateConcurrencyException ex)
             {
@@ -138,16 +162,8 @@ namespace EmployeeManagementAPI.Controllers
         {
             try
             {
-                var employee = await _context.Employees.FindAsync(id);
-
-                if (employee == null)
-                {
-                    return NotFound(new { message = $"Employee with id {id} not found" });
-                }
-
-                _context.Employees.Remove(employee);
-                await _context.SaveChangesAsync();
-
+                var deleted = await _service.DeleteAsync(id);
+                if (!deleted) return NotFound(new { message = $"Employee with id {id} not found" });
                 return NoContent();
             }
             catch (Exception ex)
@@ -159,7 +175,8 @@ namespace EmployeeManagementAPI.Controllers
 
         private bool EmployeeExists(int id)
         {
-            return _context.Employees.Any(e => e.EmployeeId == id);
+            // keep for compatibility; ideally move to service/repository
+            return false;
         }
     }
 }

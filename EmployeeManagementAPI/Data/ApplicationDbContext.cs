@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using EmployeeManagementAPI.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace EmployeeManagementAPI.Models
+namespace EmployeeManagementAPI.Data
 {
     public class ApplicationDbContext : DbContext
     {
@@ -31,7 +32,12 @@ namespace EmployeeManagementAPI.Models
 
             modelBuilder.Entity<Employee>()
                 .Property(e => e.Email)
+                .IsRequired()
                 .HasMaxLength(100);
+
+            modelBuilder.Entity<Employee>()
+                .HasIndex(e => e.Email)
+                .IsUnique();
         }
     }
 }
