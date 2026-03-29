@@ -60,7 +60,7 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(connectionString));
 
 // DI
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
