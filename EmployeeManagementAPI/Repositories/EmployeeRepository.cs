@@ -13,9 +13,13 @@ namespace EmployeeManagementAPI.Repositories
             _context = context;
         }
 
-        public Task<List<Employee>> GetAllAsync()
+        public async Task<List<Employee>> GetAllAsync(int pageNumber, int pageSize)
         {
-            return _context.Employees.ToListAsync();
+            return await _context.Employees
+                .AsNoTracking()
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
         }
 
         public Task<Employee?> GetByIdAsync(int id)
@@ -49,6 +53,38 @@ namespace EmployeeManagementAPI.Repositories
         public Task<bool> ExistsAsync(int id)
         {
             return _context.Employees.AnyAsync(e => e.EmployeeId == id);
+        }
+
+        public async Task<IEnumerable<Employee>> SearchAsync(string keyword)
+        {
+            return await _context.Employees
+                .AsNoTracking()
+                .Where(e =>
+                    EF.Functions.Like(e.Name, $"{keyword}%") ||
+                    EF.Functions.Like(e.Email, $"{keyword}%"))
+                .Select(e => new Employee
+                {
+                    EmployeeId = e.EmployeeId,
+                    Name = e.Name,
+                    Email = e.Email
+                })
+                .Take(50)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Employee>> FilterByDepartmentAsync(string department, int pageNumber, int pageSize)
+        {
+            return await _context.Employees
+                .AsNoTracking()
+                .Where(e => EF.Functions.Like(e.Department, $"{department}"))
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+
+        public async Task<int> GetTotalCountAsync()
+        {
+            return await _context.Employees.CountAsync();
         }
     }
 }

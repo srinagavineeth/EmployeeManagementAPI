@@ -12,6 +12,8 @@ namespace EmployeeManagementAPI.Data
 
         public DbSet<Employee> Employees { get; set; }
 
+        public DbSet<User> Users { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -37,6 +39,10 @@ namespace EmployeeManagementAPI.Data
 
             modelBuilder.Entity<Employee>()
                 .HasIndex(e => e.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
                 .IsUnique();
         }
     }

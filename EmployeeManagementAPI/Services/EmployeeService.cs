@@ -18,9 +18,9 @@ namespace EmployeeManagementAPI.Services
             _logger = logger;
         }
 
-        public Task<List<Employee>> GetAllAsync()
+        public Task<List<Employee>> GetAllAsync(int pageNumber, int pageSize)
         {
-            return _repository.GetAllAsync();
+            return _repository.GetAllAsync(pageNumber, pageSize);
         }
 
         public Task<Employee?> GetByIdAsync(int id)
@@ -46,18 +46,19 @@ namespace EmployeeManagementAPI.Services
                 CreatedDate = DateTime.UtcNow
             };
 
-            try
+           try
             {
                 await _repository.AddAsync(employee);
                 return (true, null, employee);
             }
             catch (DbUpdateException ex)
             {
-                // assume unique constraint violation
-                _logger.LogError(ex, "DbUpdateException while creating employee with email {Email}", dto.Email);
+                _logger.LogError(ex, "Duplicate email error for {Email}", dto.Email);
+
                 return (false, "Employee with this email already exists", null);
             }
-        }
+
+            }
 
         public async Task<(bool Success, string? Error)> UpdateAsync(int id, CreateEmployeeDto dto)
         {
@@ -133,6 +134,21 @@ namespace EmployeeManagementAPI.Services
             }
 
             return (true, null);
+        }
+
+        public async Task<IEnumerable<Employee>> SearchAsync(string keyword)
+        {
+            return await _repository.SearchAsync(keyword);
+        }
+
+        public async Task<IEnumerable<Employee>> FilterByDepartmentAsync(string department, int pageNumber = 1, int pageSize = 10)
+        {
+            return await _repository.FilterByDepartmentAsync(department, pageNumber, pageSize);
+        }
+
+        public async Task<int> GetTotalCountAsync()
+        {
+            return await _repository.GetTotalCountAsync();
         }
     }
 }
