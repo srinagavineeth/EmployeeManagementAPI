@@ -59,7 +59,7 @@ if (string.IsNullOrEmpty(connectionString))
 }
 
 // 🔥 IMPORTANT FIX (Retry + Stability)
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContextPool<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
         npgsqlOptions.EnableRetryOnFailure(
