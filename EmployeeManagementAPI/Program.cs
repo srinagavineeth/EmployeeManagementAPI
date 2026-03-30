@@ -13,9 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Controllers
 builder.Services.AddControllers();
 
-// Swagger (proper setup)
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -24,7 +23,6 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1"
     });
 
-    // 🔐 Add JWT Authentication
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -54,13 +52,22 @@ builder.Services.AddSwaggerGen(options =>
 // DB
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+
 if (string.IsNullOrEmpty(connectionString))
 {
     throw new Exception("Database connection string is not configured.");
 }
 
+// 🔥 IMPORTANT FIX (Retry + Stability)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null
+        );
+    }));
 
 // DI
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
@@ -87,7 +94,7 @@ if (string.IsNullOrEmpty(jwtIssuer) || string.IsNullOrEmpty(jwtAudience))
     throw new Exception("JWT Issuer or Audience is not configured.");
 }
 
-var key = Encoding.UTF8.GetBytes(jwtSecret!);
+var key = Encoding.UTF8.GetBytes(jwtSecret);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -111,10 +118,16 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-// 🔥 Swagger ALWAYS ON (no environment condition)
+// 🔥 IMPORTANT (Supabase fix)
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+// Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
+
+// Middleware
 app.UseMiddleware<EmployeeManagementAPI.Middleware.ExceptionMiddleware>();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
