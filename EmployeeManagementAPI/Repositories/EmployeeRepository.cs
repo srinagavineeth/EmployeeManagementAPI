@@ -17,6 +17,7 @@ namespace EmployeeManagementAPI.Repositories
         {
             return await _context.Employees
                 .AsNoTracking()
+                .OrderBy(e => e.EmployeeId)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

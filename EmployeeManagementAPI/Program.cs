@@ -13,6 +13,18 @@ var builder = WebApplication.CreateBuilder(args);
 // Controllers
 builder.Services.AddControllers();
 
+// 🔥 CORS ADD HERE
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200", "http://localhost:4200")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
+
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -58,7 +70,7 @@ if (string.IsNullOrEmpty(connectionString))
     throw new Exception("Database connection string is not configured.");
 }
 
-// 🔥 IMPORTANT FIX (Retry + Stability)
+// DB Context
 builder.Services.AddDbContextPool<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
@@ -120,6 +132,21 @@ var app = builder.Build();
 
 // 🔥 IMPORTANT (Supabase fix)
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+app.UseRouting();
+// 🔥 USE CORS HERE (VERY IMPORTANT POSITION)
+app.UseCors("AllowAll");
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "OPTIONS")
+    {
+        context.Response.StatusCode = 200;
+        await context.Response.CompleteAsync();
+        return;
+    }
+
+    await next();
+});
 
 // Swagger
 app.UseSwagger();
