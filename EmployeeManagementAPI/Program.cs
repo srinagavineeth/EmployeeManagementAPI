@@ -19,7 +19,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll",
         policy =>
         {
-            policy.WithOrigins("http://localhost:4200", "http://localhost:4200")
+            policy.WithOrigins("http://localhost:4200", "http://localhost:4200", "https://employee-ui-b3dq.onrender.com/")
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
@@ -135,7 +135,7 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 app.UseRouting();
 // 🔥 USE CORS HERE (VERY IMPORTANT POSITION)
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.Use(async (context, next) =>
 {
     if (context.Request.Method == "OPTIONS")
