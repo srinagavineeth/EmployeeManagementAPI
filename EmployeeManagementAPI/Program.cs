@@ -16,10 +16,10 @@ builder.Services.AddControllers();
 // 🔥 CORS ADD HERE
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
+    options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:4200", "http://localhost:4200", "https://employee-ui-b3dq.onrender.com/")
+            policy.WithOrigins("http://localhost:4200", "http://localhost:4200", "https://employee-ui-b3dq.onrender.com")
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
