@@ -135,7 +135,7 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 app.UseRouting();
 // 🔥 USE CORS HERE (VERY IMPORTANT POSITION)
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.Use(async (context, next) =>
 {
     if (context.Request.Method == "OPTIONS")
